@@ -1,0 +1,62 @@
+---
+# Internal Service (ClusterIP)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ecommerce-api
+  labels:
+    app: ecommerce-api
+spec:
+  selector:
+    app: ecommerce-api
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
+---
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ecommerce-api
+spec:
+  selector:
+    matchLabels:
+      app: ecommerce-api
+  template:
+    metadata:
+      labels:
+        app: ecommerce-api
+    spec:
+      containers:
+      - name: ecommerce-api
+        image: ecommerce-api:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5000
+        env:
+        # Resolves directly to the StatefulSet via the Headless Service DNS
+        - name: DB_HOST
+          value: "postgres-headless" 
+        - name: DB_PASSPORT
+          value: "sre-super-secret"
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+        # 3. SRE Health Probes
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet: 
+            path: /health/ready
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 10
